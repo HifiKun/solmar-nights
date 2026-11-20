@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Solmar Nights — Open-World Crime Game</title>
+<style>
+  html,body{margin:0;padding:0;height:100%;overflow:hidden;background:#0b1020;font-family:Verdana,Arial,sans-serif;color:#fff}
+  #c{position:fixed;inset:0;display:block}
+  .hidden{display:none!important}
+  #hud{position:fixed;inset:0;pointer-events:none;z-index:5}
+  #topbar{position:absolute;top:10px;left:12px;right:12px;display:flex;justify-content:space-between;align-items:flex-start}
+  #cash{font-size:22px;font-weight:bold;color:#7dff9a;text-shadow:0 2px 4px #000}
+  #cash small{font-size:12px;color:#cfe}
+  #wanted{position:absolute;top:10px;left:50%;transform:translateX(-50%);font-size:26px;letter-spacing:2px;text-shadow:0 2px 4px #000}
+  #wanted .on{color:#ffd23e}
+  #wanted .off{color:rgba(255,255,255,.25)}
+  #healthwrap{position:absolute;top:44px;left:12px;width:220px}
+  #healthbar{height:14px;background:rgba(0,0,0,.55);border:1px solid #fff3;border-radius:7px;overflow:hidden}
+  #healthfill{height:100%;width:100%;background:linear-gradient(90deg,#37d67a,#a8e063)}
+  #healthlabel{font-size:12px;text-shadow:0 1px 3px #000;margin-top:2px}
+  #ammo{position:absolute;top:44px;left:244px;font-size:15px;text-shadow:0 1px 3px #000}
+  #speed{position:absolute;right:14px;bottom:12px;font-size:20px;font-weight:bold;text-shadow:0 2px 4px #000;text-align:right}
+  #objective{position:absolute;left:12px;bottom:12px;max-width:420px;background:rgba(0,0,0,.55);border-left:4px solid #ffd23e;padding:8px 10px;border-radius:4px;font-size:14px;line-height:1.45}
+  #objective b{color:#ffd23e}
+  #minimap{position:absolute;top:10px;right:12px;width:190px;height:190px;border:2px solid rgba(255,255,255,.65);border-radius:50%;background:#123;box-shadow:0 2px 10px rgba(0,0,0,.6)}
+  #msg{position:absolute;top:84px;left:50%;transform:translateX(-50%);font-size:17px;font-weight:bold;color:#ffe27a;text-shadow:0 2px 4px #000;text-align:center}
+  #dialog{position:absolute;left:50%;bottom:110px;transform:translateX(-50%);width:min(560px,86vw);background:rgba(8,10,24,.85);border:1px solid #ffd23e88;border-radius:8px;padding:12px 14px;font-size:15px;line-height:1.5}
+  #dialog .who{color:#ffd23e;font-weight:bold}
+  #dialog .hint{color:#9fb4ff;font-size:12px;margin-top:6px}
+  #crosshair{position:absolute;left:50%;top:50%;width:18px;height:18px;margin:-9px 0 0 -9px;font-size:18px;line-height:1;text-align:center;color:#fff;text-shadow:0 0 4px #000}
+  #interact{position:absolute;left:50%;top:58%;transform:translateX(-50%);font-size:15px;background:rgba(0,0,0,.6);padding:6px 12px;border-radius:5px;border:1px solid #fff5}
+  #mute{position:absolute;right:14px;bottom:64px;pointer-events:auto;cursor:pointer;background:rgba(0,0,0,.55);border:1px solid #fff5;color:#fff;border-radius:5px;padding:5px 10px;font-size:13px}
+  .screen{position:fixed;inset:0;z-index:10;display:flex;align-items:center;justify-content:center;background:radial-gradient(ellipse at 50% 30%,rgba(255,120,80,.28),rgba(5,8,20,.88) 70%)}
+  .panel{width:min(620px,92vw);background:rgba(8,12,28,.92);border:1px solid #ff9a5c66;border-radius:12px;padding:26px 30px;box-shadow:0 10px 40px #000}
+  .panel h1{margin:0 0 2px;font-size:44px;letter-spacing:2px;color:#ffb347;text-shadow:0 0 18px #ff6a00}
+  .panel h1 span{color:#7dd8ff}
+  .panel h2{margin:0 0 12px;font-size:15px;color:#ffd23e;font-weight:normal;letter-spacing:3px}
+  .panel p{font-size:14px;line-height:1.6;color:#dfe6ff}
+  .panel .controls{font-size:13px;line-height:1.9;color:#bcd0ff;background:#ffffff10;border-radius:8px;padding:10px 14px;margin:12px 0}
+  .btn{pointer-events:auto;cursor:pointer;display:inline-block;background:linear-gradient(180deg,#ff9a3c,#ff6a00);color:#fff;border:0;border-radius:8px;padding:13px 34px;font-size:18px;font-weight:bold;letter-spacing:1px;margin-top:8px}
+  .btn:hover{filter:brightness(1.15)}
+  .btn.ghost{background:#223;border:1px solid #8899ff88;font-size:14px;padding:9px 18px;margin-left:8px}
+  #endstats{font-size:14px;line-height:1.8;color:#dfe6ff}
+  kbd{background:#334;border:1px solid #667;border-radius:4px;padding:1px 6px;font-family:inherit}
+</style>
+<script type="importmap">{"imports":{"three":"./vendor/three.module.min.js"}}</script>
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<div id="hud" class="hidden">
+  <div id="topbar">
+    <div id="cash">$0<br><small id="missioncount">Mission 1 / 4</small></div>
+    <div id="wanted"></div>
+  </div>
+  <canvas id="minimap" width="190" height="190"></canvas>
+  <div id="healthwrap"><div id="healthbar"><div id="healthfill"></div></div><div id="healthlabel">HEALTH</div></div>
+  <div id="ammo">Ammo 24</div>
+  <div id="msg"></div>
+  <div id="objective"><b>OBJECTIVE</b><br><span id="objtext">—</span></div>
+  <div id="speed"></div>
+  <div id="crosshair">+</div>
+  <div id="interact" class="hidden">Press <b>E</b> to enter car</div>
+  <div id="dialog" class="hidden"><span class="who" id="dlgwho"></span> <span id="dlgtext"></span><div class="hint" id="dlghint"></div></div>
+  <button id="mute">Sound: ON</button>
+</div>
+
+<div id="start" class="screen">
+  <div class="panel">
+    <h1>SOLMAR <span>NIGHTS</span></h1>
+    <h2>AN OPEN-WORLD CRIME STORY &mdash; CITY OF SOLMAR</h2>
+    <p>You are <b>Ray Vega</b>, a driver fresh out of the Solmar docks with empty pockets and a fast reputation.
+    The fixer <b>Mara Solis</b> has jobs for you &mdash; if you can stay ahead of the Solmar PD. Steal cars, run packages,
+    lose the heat, and earn your name in the neon city by the sea.</p>
+    <div class="controls">
+      <kbd>W A S D</kbd> move &nbsp; <kbd>Mouse</kbd> drag to look &nbsp; <kbd>Shift</kbd> run<br>
+      <kbd>Space</kbd> jump &nbsp; <kbd>E</kbd> enter / exit car &nbsp; <kbd>Click</kbd> shoot pistol<br>
+      <kbd>P</kbd> pause &nbsp; <kbd>M</kbd> mute &nbsp; <kbd>R</kbd> respawn car
+    </div>
+    <button class="btn" id="startbtn">▶ START ENGINE</button>
+    <button class="btn ghost" id="continuebtn">Continue saved game</button>
+    <p style="font-size:12px;color:#8fa3d8;margin-top:14px">Progress saves automatically to this browser. Original game &mdash; fictional city, characters and story. No real-world brands.</p>
+  </div>
+</div>
+
+<div id="pause" class="screen hidden">
+  <div class="panel">
+    <h1 style="font-size:32px">PAUSED</h1>
+    <p>Take a breath, Ray. The city waits.</p>
+    <p id="pausestats"></p>
+    <button class="btn" id="resumebtn">Resume</button>
+    <button class="btn ghost" id="quitbtn">Save &amp; quit to menu</button>
+  </div>
+</div>
+
+<div id="end" class="screen hidden">
+  <div class="panel">
+    <h1 id="busted" style="font-size:36px">BUSTED</h1>
+    <p id="endtext"></p>
+    <p id="endstats"></p>
+    <button class="btn" id="retrybtn">Back on the streets</button>
+  </div>
+</div>
+
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>
